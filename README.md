@@ -1,15 +1,21 @@
 # Sistema de Gestión de Tickets (FastAPI + SQLAlchemy)
 
-Backend completo en **FastAPI** con **SQLite** y **SQLAlchemy** para la administración, emisión, autenticación JWT y validación con código QR de tickets para eventos ("Pollada 2026", "Cachimbeada 2026", etc.).
+Backend completo en **FastAPI** con **SQLite** y **SQLAlchemy** para la administración, emisión, autenticación JWT, entrega y reporte de tickets para eventos ("Pollada 2026", "Cachimbeada 2026", etc.).
 
 ---
 
-## 🚀 Características
+## 🚀 Características y Funcionalidades
+
 - **Modelos SQLAlchemy**: `Usuario`, `Evento` y `Ticket`.
-- **Autenticación JWT**: Login seguro con contraseñas encriptadas mediante `bcrypt`.
-- **Generación Automática de QR**: Al crear un ticket se genera un `codigo_unico` (formato `EVENTO-0001-XXXX`) y una imagen QR PNG guardada en `/static/qrcodes/`.
-- **Verificación de QR**: El QR enlaza a `http://localhost:8000/ticket/{codigo_unico}` (endpoint público para consulta al escanear con escáner/celular).
-- **Rutas Protegidas**: Todas las rutas de la API, excepto login y la verificación pública del QR, requieren estar autenticado.
+- **Autenticación JWT**: Login seguro (`/auth/login`) con contraseñas encriptadas mediante `bcrypt`.
+- **Registrar Venta / Ticket Adicional**: `POST /tickets/registrar-venta` genera el `codigo_unico` y el código QR PNG en `static/qrcodes/`.
+- **Búsqueda Avanzada de Tickets**: `GET /tickets/buscar` permite buscar por `codigo_alumno` o `codigo_unico`.
+- **Confirmación de Entrega con Control Anti-Duplicado**: `POST /tickets/confirmar-entrega` marca el ticket como entregado registrando la fecha/hora actual del servidor y rechaza entregas duplicadas con error HTTP 400.
+- **KPIs y Métricas por Evento**: `GET /eventos/{evento_id}/kpis` calcula cantidad de tickets vendidos, separados (no recogidos), no vendidos y entregados.
+- **Exportación en Excel y CSV**:
+  - `GET /eventos/{evento_id}/exportar/excel` (genera archivo `.xlsx` con `openpyxl`).
+  - `GET /eventos/{evento_id}/exportar/csv` (genera archivo `.csv`).
+- **Verificación Pública de QR**: `GET /ticket/{codigo_unico}` accesible sin autenticación al escanear con la cámara del celular.
 
 ---
 
@@ -19,20 +25,21 @@ Backend completo en **FastAPI** con **SQLite** y **SQLAlchemy** para la administ
 sistema-tickets/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py          # Servidor principal FastAPI y configuración de routers
+│   ├── main.py          # Servidor principal FastAPI
 │   ├── database.py      # Conexión SQLAlchemy y gestión de la sesión SQLite
 │   ├── models.py        # Modelos ORM (Usuario, Evento, Ticket)
-│   ├── schemas.py       # Esquemas Pydantic para peticiones y respuestas
-│   ├── auth.py          # Autenticación JWT y hash de contraseñas
+│   ├── schemas.py       # Esquemas Pydantic
+│   ├── auth.py          # Autenticación JWT y hash de contraseñas con bcrypt
 │   ├── utils.py         # Autogeneración de código único y creador de QR PNG
 │   └── routers/
 │       ├── __init__.py
-│       ├── auth.py      # Endpoints /auth/login y /auth/me
-│       ├── eventos.py   # CRUD de eventos (/eventos)
-│       └── tickets.py   # Gestión de tickets y entrega (/tickets)
+│       ├── auth.py      # Endpoints /auth/login, /auth/me y /auth/registro
+│       ├── eventos.py   # CRUD, KPIs y Exportación Excel/CSV (/eventos)
+│       └── tickets.py   # Registro de venta, búsqueda, entrega y tickets (/tickets)
 ├── static/
 │   └── qrcodes/         # Carpeta donde se guardan las imágenes QR generadas
 ├── seed.py              # Script para inicializar BD y usuario admin
+├── test_new_endpoints.py# Suite de pruebas automatizadas para todos los endpoints
 ├── requirements.txt     # Dependencias del proyecto
 └── README.md
 ```
@@ -50,7 +57,7 @@ sistema-tickets/
    ```bash
    python seed.py
    ```
-   *Esto creará la base de datos `sistema_tickets.db`, los eventos de prueba y el usuario predeterminado:*
+   *Esto creará la base de datos `sistema_tickets.db`, eventos de prueba y el usuario predeterminado:*
    - **Usuario**: `admin`
    - **Contraseña**: `admin123`
 
@@ -59,11 +66,16 @@ sistema-tickets/
    uvicorn app.main:app --reload
    ```
 
+4. **Ejecutar Suite de Pruebas**:
+   ```bash
+   python test_new_endpoints.py
+   ```
+
 ---
 
 ## 📌 Documentación Interactiva de API
 
-Una vez iniciado el servidor, accede a:
+Accede con el servidor en ejecución a:
 - **Swagger UI**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
 
@@ -76,41 +88,51 @@ Una vez iniciado el servidor, accede a:
    - `password`: `admin123`
 2. Copia el token JWT en las peticiones agregando la cabecera:
    `Authorization: Bearer <tu_token_jwt>`
-*(En Swagger UI, usa el botón **Authorize** en la esquina superior derecha).*
 
 ---
 
-## 🎟️ Ejemplo de Uso de Endpoints
+## 🎟️ Resumen de Nuevos Endpoints
 
-### Crear un Ticket (Autenticado)
-`POST /tickets`
+### 1. Registrar Venta / Vender Ticket Adicional
+`POST /tickets/registrar-venta`
 ```json
 {
   "evento_id": 1,
-  "nombre_alumno": "Juan Pérez",
-  "codigo_alumno": "202100123",
-  "estado": "no_vendido"
+  "nombre_alumno": "Carlos Mendoza",
+  "codigo_alumno": "202400111",
+  "estado": "vendido"
 }
 ```
-**Respuesta:**
+
+### 2. Buscar Ticket
+`GET /tickets/buscar?codigo_alumno=202400111`
+`GET /tickets/buscar?codigo_unico=POLL-0001-A9F2`
+
+### 3. Confirmar Entrega (Anti-Duplicados)
+`POST /tickets/confirmar-entrega`
 ```json
 {
-  "id": 1,
-  "codigo_unico": "POLL-0001-A9F2",
+  "codigo_unico": "POLL-0001-A9F2"
+}
+```
+*Si ya fue entregado, devuelve error HTTP 400 con la fecha exacta de entrega previa.*
+
+### 4. KPIs por Evento
+`GET /eventos/1/kpis`
+```json
+{
   "evento_id": 1,
-  "nombre_alumno": "Juan Pérez",
-  "codigo_alumno": "202100123",
-  "estado": "no_vendido",
-  "fecha_hora_entrega": null,
-  "entregado": false,
-  "qr_image_url": "/static/qrcodes/POLL-0001-A9F2.png"
+  "nombre_evento": "Pollada 2026",
+  "total_tickets": 25,
+  "vendidos": 18,
+  "separados": 5,
+  "no_vendidos": 2,
+  "entregados": 12
 }
 ```
 
-### Escaneo / Verificación Pública del QR
-`GET /ticket/POLL-0001-A9F2` (No requiere token)
-Devuelve la información de validez y entrega del ticket al escanear la imagen QR desde la cámara.
+### 5. Exportar a Excel
+`GET /eventos/1/exportar/excel` -> Descarga archivo `tickets_Pollada_2026.xlsx`
 
-### Entregar Ticket (Autenticado)
-`POST /tickets/POLL-0001-A9F2/entregar`
-Marca el ticket como `entregado=true`, `estado="vendido"` y registra la fecha/hora actual.
+### 6. Exportar a CSV
+`GET /eventos/1/exportar/csv` -> Descarga archivo `tickets_Pollada_2026.csv`

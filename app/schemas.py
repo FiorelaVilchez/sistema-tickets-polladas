@@ -43,6 +43,15 @@ class EventoOut(EventoBase):
     class Config:
         from_attributes = True
 
+class EventoKPIsOut(BaseModel):
+    evento_id: int
+    nombre_evento: str
+    total_tickets: int
+    vendidos: int
+    separados: int
+    no_vendidos: int
+    entregados: int
+
 # ----------------- TICKET SCHEMAS -----------------
 class TicketCreate(BaseModel):
     evento_id: int
@@ -50,14 +59,20 @@ class TicketCreate(BaseModel):
     codigo_alumno: str
     estado: Optional[str] = "no_vendido" # no_vendido | separado | vendido
 
+class TicketVentaCreate(BaseModel):
+    evento_id: int
+    nombre_alumno: str
+    codigo_alumno: str
+    estado: str = "vendido" # separado | vendido
+
 class TicketUpdate(BaseModel):
     nombre_alumno: Optional[str] = None
     codigo_alumno: Optional[str] = None
     estado: Optional[str] = None # no_vendido | separado | vendido
     entregado: Optional[bool] = None
 
-class TicketEntrega(BaseModel):
-    entregado: bool = True
+class ConfirmarEntregaRequest(BaseModel):
+    codigo_unico: str
 
 class TicketOut(BaseModel):
     id: int
