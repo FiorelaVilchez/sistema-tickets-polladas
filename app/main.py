@@ -5,12 +5,23 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app.database import engine, Base, get_db
-from app.models import Ticket
+from app.database import engine, Base, get_db, SessionLocal
+from app.models import Ticket, EstudianteMatriculado
 from app.routers import auth, eventos, tickets, estudiantes
+from seed import seed_database
 
 # Crear las tablas en la base de datos si no existen
 Base.metadata.create_all(bind=engine)
+
+# Auto-poblar si la tabla de estudiantes está vacía (ideal para despliegue en la nube / Render)
+try:
+    db_test = SessionLocal()
+    if db_test.query(EstudianteMatriculado).count() == 0:
+        print("[INIT] Poblando base de datos desde EstudiantesMatriculados.xlsx...")
+        seed_database()
+    db_test.close()
+except Exception as err:
+    print(f"[INIT] Notificación de auto-seed: {err}")
 
 app = FastAPI(
     title="Sistema de Gestión de Tickets",
@@ -18,7 +29,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configurar CORS (permitir accesos desde cualquier origen en la red local)
+# Configurar CORS (permitir accesos desde cualquier origen en la red local o internet)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
