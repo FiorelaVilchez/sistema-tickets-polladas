@@ -23,6 +23,17 @@ class UsuarioOut(UsuarioBase):
     class Config:
         from_attributes = True
 
+# ----------------- ESTUDIANTE MATRICULADO -----------------
+class EstudianteOut(BaseModel):
+    id: int
+    codigo: str
+    nombre: str
+    carrera: str
+    ciclo: str
+
+    class Config:
+        from_attributes = True
+
 # ----------------- EVENTO SCHEMAS -----------------
 class EventoBase(BaseModel):
     nombre: str
@@ -46,44 +57,65 @@ class EventoOut(EventoBase):
 class EventoKPIsOut(BaseModel):
     evento_id: int
     nombre_evento: str
-    total_tickets: int
-    vendidos: int
+    total_boletos: int
+    pagados: int
+    parcialmente_pagados: int
     separados: int
-    no_vendidos: int
     entregados: int
+    total_recaudado: float
+    total_pendiente: float
+    estudiantes_matriculados_total: int
+    estudiantes_matriculados_con_boleto: int
+    porcentaje_cobertura_matriculados: float
 
-# ----------------- TICKET SCHEMAS -----------------
-class TicketCreate(BaseModel):
-    evento_id: int
-    nombre_alumno: str
-    codigo_alumno: str
-    estado: Optional[str] = "no_vendido" # no_vendido | separado | vendido
+# ----------------- TICKET & VENTA SCHEMAS -----------------
+class ItemBoletoVenta(BaseModel):
+    numero_boleto: int # Número del boleto físico (1 a 1000)
+    nombre_recolector: Optional[str] = None # Persona referencial para recojo de esta pollada
 
-class TicketVentaCreate(BaseModel):
+class VentaMultipleCreate(BaseModel):
     evento_id: int
+    codigo_alumno: str # Código de 6 cifras o DNI de 7/8 cifras
     nombre_alumno: str
-    codigo_alumno: str
-    estado: str = "vendido" # separado | vendido
+    carrera: Optional[str] = "INGENIERIA DE SISTEMAS"
+    ciclo: Optional[str] = "1"
+    estado: str = "pagado" # separado | parcialmente_pagado | pagado
+    precio_unitario: float = 15.0
+    monto_pagado_total: float = 0.0 # Monto total abonado en la transacción
+    metodo_pago: Optional[str] = "efectivo" # yape | plin | efectivo | ninguno
+    boletos: List[ItemBoletoVenta] # Lista de boletos físicos comprados (hasta 20)
 
 class TicketUpdate(BaseModel):
     nombre_alumno: Optional[str] = None
     codigo_alumno: Optional[str] = None
-    estado: Optional[str] = None # no_vendido | separado | vendido
+    carrera: Optional[str] = None
+    ciclo: Optional[str] = None
+    nombre_recolector: Optional[str] = None
+    estado: Optional[str] = None
     entregado: Optional[bool] = None
 
-class ConfirmarEntregaRequest(BaseModel):
-    codigo_unico: str
+class ConfirmarEntregaPaymentRequest(BaseModel):
+    numero_boleto: int
+    monto_cobrado_adicional: Optional[float] = 0.0
+    metodo_pago_entrega: Optional[str] = None
 
 class TicketOut(BaseModel):
     id: int
-    codigo_unico: str
+    numero_boleto: int
     evento_id: int
-    nombre_alumno: str
     codigo_alumno: str
+    nombre_alumno: str
+    carrera: str
+    ciclo: str
+    nombre_recolector: Optional[str] = None
     estado: str
-    fecha_hora_entrega: Optional[datetime] = None
+    precio_unitario: float
+    monto_total: float
+    monto_pagado: float
+    monto_pendiente: float
+    metodo_pago: str
     entregado: bool
-    qr_image_url: Optional[str] = None
+    fecha_hora_entrega: Optional[datetime] = None
     evento: Optional[EventoOut] = None
 
     class Config:

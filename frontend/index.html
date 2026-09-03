@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Tickets - Panel de Control</title>
+  <title>Sistema de Gestión de Boletos - Eventos</title>
   
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,9 +13,6 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- HTML5 QR Code Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
   <!-- Custom CSS -->
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -29,7 +26,7 @@
     <div class="header-container">
       <div class="brand">
         <i class="fa-solid fa-ticket brand-icon"></i>
-        <span class="brand-title">SistemaTickets</span>
+        <span class="brand-title">SistemaBoletos</span>
       </div>
 
       <!-- Selector de Evento Activo Global -->
@@ -52,13 +49,13 @@
     <!-- Top Navigation Tabs (Desktop) -->
     <nav class="desktop-nav">
       <button class="nav-tab active" data-screen="dashboard">
-        <i class="fa-solid fa-chart-pie"></i> Dashboard
+        <i class="fa-solid fa-chart-pie"></i> Dashboard & KPIs
       </button>
       <button class="nav-tab" data-screen="registro">
         <i class="fa-solid fa-cart-plus"></i> Nueva Venta
       </button>
       <button class="nav-tab" data-screen="entrega">
-        <i class="fa-solid fa-qrcode"></i> Entrega & Escáner
+        <i class="fa-solid fa-box-open"></i> Entrega de Polladas
       </button>
     </nav>
   </header>
@@ -75,7 +72,7 @@
               <i class="fa-solid fa-ticket"></i>
             </div>
             <h2>Iniciar Sesión</h2>
-            <p>Accede al Sistema de Gestión de Tickets</p>
+            <p>Sistema de Gestión de Boletos Físicos</p>
           </div>
 
           <form id="login-form" class="login-form">
@@ -101,7 +98,7 @@
             <div id="login-error" class="alert alert-danger hidden"></div>
 
             <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block">
-              <span>Ingresar</span>
+              <span>Ingresar al Sistema</span>
               <i class="fa-solid fa-arrow-right-to-bracket"></i>
             </button>
           </form>
@@ -132,42 +129,60 @@
 
         <!-- Tarjetas de KPI -->
         <div class="kpi-grid">
-          <div class="kpi-card glass-panel card-total">
-            <div class="kpi-icon"><i class="fa-solid fa-tickets"></i></div>
+          <!-- KPI Cobertura Matriculados -->
+          <div class="kpi-card glass-panel card-cobertura">
+            <div class="kpi-icon"><i class="fa-solid fa-graduation-cap"></i></div>
             <div class="kpi-info">
-              <span class="kpi-label">Total Emitidos</span>
+              <span class="kpi-label">Matriculados con Boleto</span>
+              <h3 id="kpi-matriculados-reach" class="kpi-value">0 / 550</h3>
+              <small id="kpi-matriculados-pct" class="kpi-subtext">0% de cobertura</small>
+            </div>
+          </div>
+
+          <div class="kpi-card glass-panel card-total">
+            <div class="kpi-icon"><i class="fa-solid fa-ticket"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Total Boletos</span>
               <h3 id="kpi-total" class="kpi-value">0</h3>
+            </div>
+          </div>
+
+          <div class="kpi-card glass-panel card-recaudado">
+            <div class="kpi-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Recaudado Cobrado</span>
+              <h3 id="kpi-recaudado" class="kpi-value">S/ 0.00</h3>
+            </div>
+          </div>
+
+          <div class="kpi-card glass-panel card-pendiente">
+            <div class="kpi-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="kpi-info">
+              <span class="kpi-label">Saldo Pendiente</span>
+              <h3 id="kpi-pendiente" class="kpi-value">S/ 0.00</h3>
             </div>
           </div>
 
           <div class="kpi-card glass-panel card-vendidos">
             <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
             <div class="kpi-info">
-              <span class="kpi-label">Tickets Vendidos</span>
+              <span class="kpi-label">Boletos Pagados (100%)</span>
               <h3 id="kpi-vendidos" class="kpi-value">0</h3>
             </div>
           </div>
 
-          <div class="kpi-card glass-panel card-separados">
-            <div class="kpi-icon"><i class="fa-solid fa-clock"></i></div>
+          <div class="kpi-card glass-panel card-parciales">
+            <div class="kpi-icon"><i class="fa-solid fa-adjust"></i></div>
             <div class="kpi-info">
-              <span class="kpi-label">Tickets Separados</span>
-              <h3 id="kpi-separados" class="kpi-value">0</h3>
-            </div>
-          </div>
-
-          <div class="kpi-card glass-panel card-no-vendidos">
-            <div class="kpi-icon"><i class="fa-solid fa-ticket-simple"></i></div>
-            <div class="kpi-info">
-              <span class="kpi-label">No Vendidos</span>
-              <h3 id="kpi-no-vendidos" class="kpi-value">0</h3>
+              <span class="kpi-label">Parcialmente Pagados</span>
+              <h3 id="kpi-parciales" class="kpi-value">0</h3>
             </div>
           </div>
 
           <div class="kpi-card glass-panel card-entregados">
-            <div class="kpi-icon"><i class="fa-solid fa-box-check"></i></div>
+            <div class="kpi-icon"><i class="fa-solid fa-utensils"></i></div>
             <div class="kpi-info">
-              <span class="kpi-label">Físicamente Entregados</span>
+              <span class="kpi-label">Polladas Entregadas</span>
               <h3 id="kpi-entregados" class="kpi-value">0</h3>
             </div>
           </div>
@@ -176,9 +191,9 @@
         <!-- Lista de Tickets del Evento -->
         <div class="table-card glass-panel mt-6">
           <div class="table-card-header">
-            <h3><i class="fa-solid fa-list-check"></i> Tickets Emitidos</h3>
+            <h3><i class="fa-solid fa-list-check"></i> Registro de Boletos Físicos</h3>
             <div class="table-search">
-              <input type="text" id="table-search-input" placeholder="Filtrar por alumno o código...">
+              <input type="text" id="table-search-input" placeholder="Buscar por boleto #, comprador, recolector o código...">
             </div>
           </div>
 
@@ -186,16 +201,22 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Código Único</th>
-                  <th>Alumno</th>
-                  <th>Código Alumno</th>
+                  <th>Nº Boleto</th>
+                  <th>Código / DNI</th>
+                  <th>Comprador</th>
+                  <th>Carrera / Ciclo</th>
+                  <th>Persona que Recoge</th>
                   <th>Estado</th>
+                  <th>Total</th>
+                  <th>Pagado</th>
+                  <th>Pendiente</th>
+                  <th>Método</th>
                   <th>Entregado</th>
-                  <th>Fecha de Entrega</th>
+                  <th>Fecha Entrega</th>
                 </tr>
               </thead>
               <tbody id="tickets-table-body">
-                <tr><td colspan="6" class="text-center">Cargando tickets...</td></tr>
+                <tr><td colspan="12" class="text-center">Cargando boletos...</td></tr>
               </tbody>
             </table>
           </div>
@@ -213,9 +234,9 @@
           <div class="glass-panel form-card">
             <div class="card-title">
               <i class="fa-solid fa-cart-shopping"></i>
-              <h2>Registrar Nueva Venta</h2>
+              <h2>Registrar Venta de Boletos</h2>
             </div>
-            <p class="card-subtitle">Emisión inmediata de tickets con generación de código QR.</p>
+            <p class="card-subtitle">Asignación de boletos físicos numerados (1 a 1000) con autocompletado.</p>
 
             <form id="venta-form" class="mt-4">
               <div class="form-group">
@@ -223,31 +244,95 @@
                 <select id="venta-evento-select" class="form-control" required></select>
               </div>
 
-              <div class="form-group">
-                <label for="venta-nombre">Nombre Completo del Alumno</label>
-                <input type="text" id="venta-nombre" class="form-control" placeholder="Ej. Juan Carlos Pérez" required>
+              <!-- Código con Autocompletado -->
+              <div class="form-group relative-position">
+                <label for="venta-codigo">Código de Alumno (6 cifras) o DNI</label>
+                <div class="input-icon-wrapper">
+                  <i class="fa-solid fa-id-card input-icon"></i>
+                  <input type="text" id="venta-codigo" class="form-control" placeholder="Escribe el código (ej. 247358 o DNI)..." required autocomplete="off">
+                </div>
+                <!-- Dropdown Autocomplete Result List -->
+                <div id="autocomplete-results" class="autocomplete-dropdown hidden"></div>
               </div>
 
               <div class="form-group">
-                <label for="venta-codigo">Código Universitario de Alumno</label>
-                <input type="text" id="venta-codigo" class="form-control" placeholder="Ej. 202400123" required>
+                <label for="venta-nombre">Nombre del Comprador</label>
+                <input type="text" id="venta-nombre" class="form-control" placeholder="Nombre completo" required>
               </div>
 
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="venta-carrera">Carrera / Escuela</label>
+                  <input type="text" id="venta-carrera" class="form-control" value="INGENIERIA DE SISTEMAS" required>
+                </div>
+                <div class="form-group">
+                  <label for="venta-ciclo">Ciclo</label>
+                  <input type="text" id="venta-ciclo" class="form-control" value="1" required>
+                </div>
+              </div>
+
+              <hr class="form-divider">
+
+              <!-- Cantidad de Boletos y Número Inicial -->
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="venta-cantidad">Cantidad de Boletos (1 a 20)</label>
+                  <input type="number" id="venta-cantidad" class="form-control" min="1" max="20" value="1" required>
+                </div>
+                <div class="form-group">
+                  <label for="venta-boleto-inicial">Boleto Físico Inicial (#)</label>
+                  <input type="number" id="venta-boleto-inicial" class="form-control" min="1" max="1000" placeholder="Ej. 101" required>
+                </div>
+              </div>
+
+              <!-- Contenedor dinámico de recolectores -->
               <div class="form-group">
-                <label for="venta-estado">Estado del Ticket</label>
+                <label>Personas que Recogerán cada Pollada (Referencial)</label>
+                <div id="recolectores-container" class="recolectores-list">
+                  <!-- Se generarán dinámicamente según la cantidad de boletos -->
+                </div>
+              </div>
+
+              <hr class="form-divider">
+
+              <!-- Estado de Pago, Monto y Método -->
+              <div class="form-group">
+                <label for="venta-estado">Estado de la Venta</label>
                 <select id="venta-estado" class="form-control" required>
-                  <option value="vendido">Vendido (Pagado)</option>
-                  <option value="separado">Separado (Pendiente de Pago)</option>
+                  <option value="pagado">Pagado (100% Cancelado)</option>
+                  <option value="parcialmente_pagado">Parcialmente Pagado (Adelanto)</option>
+                  <option value="separado">Separado (Sin Pago por ahora)</option>
+                </select>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="venta-precio-unitario">Precio Unitario (S/)</label>
+                  <input type="number" step="0.5" id="venta-precio-unitario" class="form-control" value="15.00" required>
+                </div>
+                <div class="form-group">
+                  <label for="venta-monto-pagado">Monto Pagado Total (S/)</label>
+                  <input type="number" step="0.5" id="venta-monto-pagado" class="form-control" value="15.00" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="venta-metodo-pago">Método de Pago</label>
+                <select id="venta-metodo-pago" class="form-control" required>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="yape">Yape</option>
+                  <option value="plin">Plin</option>
+                  <option value="ninguno">Ninguno (Separado)</option>
                 </select>
               </div>
 
               <button type="submit" id="btn-registrar-venta" class="btn btn-emerald btn-block mt-4">
-                <i class="fa-solid fa-qrcode"></i> Generar Ticket & Código QR
+                <i class="fa-solid fa-receipt"></i> Registrar y Asignar Boletos Físicos
               </button>
             </form>
           </div>
 
-          <!-- Resultado / Vista Previa del Ticket Generado -->
+          <!-- Resultado / Vista Previa de Venta Registrada -->
           <div id="ticket-result-card" class="glass-panel ticket-result-card hidden">
             <div class="ticket-header-strip">
               <span id="res-evento-nombre" class="event-badge">Evento</span>
@@ -255,26 +340,47 @@
             </div>
 
             <div class="ticket-body">
-              <h3 id="res-codigo-unico" class="codigo-highlight">POLL-0001-XXXX</h3>
+              <h3 id="res-boletos-summary" class="codigo-highlight">BOLETOS #101</h3>
               
-              <div class="qr-preview-box">
-                <img id="res-qr-image" src="" alt="Código QR del Ticket">
-              </div>
-
               <div class="ticket-details-grid">
                 <div>
-                  <span class="detail-label">Alumno:</span>
+                  <span class="detail-label">Comprador:</span>
                   <strong id="res-nombre-alumno">-</strong>
                 </div>
                 <div>
-                  <span class="detail-label">Código Alumno:</span>
+                  <span class="detail-label">Código / DNI:</span>
                   <strong id="res-codigo-alumno">-</strong>
+                </div>
+                <div>
+                  <span class="detail-label">Carrera / Ciclo:</span>
+                  <strong id="res-carrera-ciclo">-</strong>
+                </div>
+                <div>
+                  <span class="detail-label">Total a Pagar:</span>
+                  <strong id="res-monto-total">S/ 0.00</strong>
+                </div>
+                <div>
+                  <span class="detail-label">Monto Abonado:</span>
+                  <strong id="res-monto-pagado" class="text-emerald">S/ 0.00</strong>
+                </div>
+                <div>
+                  <span class="detail-label">Saldo Pendiente:</span>
+                  <strong id="res-monto-pendiente" class="text-rose">S/ 0.00</strong>
+                </div>
+                <div>
+                  <span class="detail-label">Método Pago:</span>
+                  <strong id="res-metodo-pago">-</strong>
                 </div>
               </div>
 
+              <div class="boletos-assigned-box mt-4">
+                <h4>Detalle de Boletos Asignados:</h4>
+                <div id="res-boletos-list" class="assigned-list"></div>
+              </div>
+
               <div class="ticket-actions mt-4">
-                <button id="btn-print-ticket" class="btn btn-secondary btn-block">
-                  <i class="fa-solid fa-print"></i> Imprimir / Guardar QR
+                <button id="btn-nueva-venta-reset" class="btn btn-primary btn-block">
+                  <i class="fa-solid fa-plus"></i> Registrar Otra Venta
                 </button>
               </div>
             </div>
@@ -284,45 +390,28 @@
       </div>
     </section>
 
-    <!-- ==================== PANTALLA 4: ENTREGA Y ESCÁNER ==================== -->
+    <!-- ==================== PANTALLA 4: ENTREGA DE POLLADAS ==================== -->
     <section id="screen-entrega" class="screen-view hidden">
       <div class="entrega-container">
         
-        <!-- Bloque de Búsqueda y Cámara -->
         <div class="glass-panel entrega-search-card">
           <div class="card-title">
-            <i class="fa-solid fa-cash-register"></i>
-            <h2>Módulo de Entrega de Tickets</h2>
+            <i class="fa-solid fa-utensils"></i>
+            <h2>Entrega de Polladas en Puerta</h2>
           </div>
-          <p class="card-subtitle">Escanea el código QR desde la cámara del celular o realiza una búsqueda manual.</p>
+          <p class="card-subtitle">Busca por número de boleto físico (#1 a #1000), código de alumno, DNI o persona que recoge.</p>
 
-          <!-- Botón grande de escáner cámara en móviles -->
-          <button id="btn-toggle-scanner" class="btn btn-primary btn-block btn-lg mt-4">
-            <i class="fa-solid fa-camera"></i> <span>Activar Cámara / Escáner QR</span>
-          </button>
-
-          <!-- Visor de la cámara HTML5 QR Scanner -->
-          <div id="scanner-wrapper" class="scanner-wrapper hidden">
-            <div id="qr-reader" class="qr-reader"></div>
-            <button id="btn-close-scanner" class="btn btn-secondary btn-sm mt-2">
-              <i class="fa-solid fa-xmark"></i> Cerrar Cámara
-            </button>
-          </div>
-
-          <div class="divider"><span>o búsqueda manual</span></div>
-
-          <!-- Formulario de Búsqueda Manual -->
-          <form id="entrega-search-form" class="search-form">
+          <form id="entrega-search-form" class="search-form mt-4">
             <div class="input-group">
-              <input type="text" id="entrega-query" class="form-control" placeholder="Ingrese Código Alumno o Código Único..." required>
-              <button type="submit" class="btn btn-primary">
+              <input type="text" id="entrega-query" class="form-control form-control-lg" placeholder="Nº Boleto (ej. 101), Código, DNI o Nombre..." required>
+              <button type="submit" class="btn btn-primary btn-lg">
                 <i class="fa-solid fa-magnifying-glass"></i> Buscar
               </button>
             </div>
           </form>
         </div>
 
-        <!-- Resultados de la Búsqueda / Ticket Encontrado -->
+        <!-- Resultados de la Búsqueda / Boleto Encontrado -->
         <div id="entrega-results-container" class="mt-6"></div>
 
       </div>
@@ -330,20 +419,40 @@
 
   </main>
 
-  <!-- ==================== MODAL 1: CONFIRMAR ENTREGA ==================== -->
+  <!-- ==================== MODAL: CONFIRMAR ENTREGA ==================== -->
   <div id="confirm-modal" class="modal-backdrop hidden">
     <div class="modal-card glass-panel">
       <div class="modal-header">
         <i class="fa-solid fa-triangle-exclamation modal-icon text-warning"></i>
-        <h3>Confirmar Entrega de Ticket</h3>
+        <h3>Confirmar Entrega de Pollada</h3>
       </div>
       <div class="modal-body">
-        <p>¿Estás seguro de que deseas confirmar la entrega del ticket?</p>
+        <p>¿Confirmar la entrega física de este boleto?</p>
         <div class="modal-ticket-summary">
-          <p><strong>Código Ticket:</strong> <span id="modal-confirm-codigo">-</span></p>
-          <p><strong>Alumno:</strong> <span id="modal-confirm-alumno">-</span></p>
+          <p><strong>Boleto Físico:</strong> <span id="modal-confirm-boleto" class="text-primary font-bold"># -</span></p>
+          <p><strong>Recoge:</strong> <span id="modal-confirm-recolector">-</span></p>
+          <p><strong>Comprador:</strong> <span id="modal-confirm-comprador">-</span></p>
         </div>
-        <p class="text-sm text-muted">Esta acción registrará la fecha y hora de entrega actual del servidor.</p>
+
+        <!-- Alerta de pago saldo pendiente en entrega -->
+        <div id="modal-payment-section" class="payment-alert-box hidden">
+          <p class="font-bold text-amber"><i class="fa-solid fa-circle-exclamation"></i> Boleto con Saldo Pendiente:</p>
+          <p>Monto Pendiente a Cobrar: <strong id="modal-pendiente-monto">S/ 0.00</strong></p>
+          
+          <div class="form-group mt-2">
+            <label for="modal-cobro-input">Cobrar Saldo en Puerta (S/)</label>
+            <input type="number" step="0.5" id="modal-cobro-input" class="form-control" value="0">
+          </div>
+          <div class="form-group">
+            <label for="modal-cobro-metodo">Método de Pago del Saldo</label>
+            <select id="modal-cobro-metodo" class="form-control">
+              <option value="efectivo">Efectivo</option>
+              <option value="yape">Yape</option>
+              <option value="plin">Plin</option>
+            </select>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button id="btn-cancel-entrega" class="btn btn-secondary">Cancelar</button>
@@ -354,57 +463,18 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL 2: VENDER TICKET ADICIONAL ==================== -->
-  <div id="adicional-modal" class="modal-backdrop hidden">
-    <div class="modal-card glass-panel">
-      <div class="modal-header">
-        <i class="fa-solid fa-cart-plus modal-icon text-primary"></i>
-        <h3>Vender Ticket Adicional</h3>
-      </div>
-      <form id="adicional-form">
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Alumno</label>
-            <input type="text" id="adicional-nombre" class="form-control" required readonly>
-          </div>
-          <div class="form-group">
-            <label>Código Alumno</label>
-            <input type="text" id="adicional-codigo" class="form-control" required readonly>
-          </div>
-          <div class="form-group">
-            <label>Evento</label>
-            <select id="adicional-evento-select" class="form-control" required></select>
-          </div>
-          <div class="form-group">
-            <label>Estado de la Venta</label>
-            <select id="adicional-estado" class="form-control" required>
-              <option value="vendido">Vendido (Pagado)</option>
-              <option value="separado">Separado</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" id="btn-cancel-adicional" class="btn btn-secondary">Cancelar</button>
-          <button type="submit" class="btn btn-emerald">
-            <i class="fa-solid fa-plus"></i> Generar Ticket Adicional
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <!-- Bottom Navigation Bar (Mobile Display Only) -->
   <nav class="mobile-nav">
     <button class="mobile-nav-item active" data-screen="dashboard">
       <i class="fa-solid fa-chart-pie"></i>
-      <span>Dashboard</span>
+      <span>KPIs</span>
     </button>
     <button class="mobile-nav-item" data-screen="registro">
       <i class="fa-solid fa-cart-plus"></i>
       <span>Vender</span>
     </button>
     <button class="mobile-nav-item" data-screen="entrega">
-      <i class="fa-solid fa-qrcode"></i>
+      <i class="fa-solid fa-utensils"></i>
       <span>Entrega</span>
     </button>
   </nav>

@@ -1,19 +1,26 @@
-# 🎟️ Sistema de Gestión de Tickets (FastAPI + Modern Web Frontend)
+# 🎟️ Sistema de Gestión de Boletos Físicos Numerados (1 a 1000)
 
-Sistema de gestión, cobranza, emisión con código QR, validación con cámara de celular y exportación de reportes para eventos universitarios (ej. *"Pollada 2026"*, *"Cachimbeada 2026"*).
+Sistema de gestión, cobranza, venta salón por salón, autocompletado de estudiantes matriculados, entrega y reporte de boletos para eventos universitarios (ej. *"Pollada 2026"*, *"Cachimbeada 2026"*).
 
-Designed with **FastAPI**, **SQLAlchemy**, **SQLite**, **JWT Auth**, **openpyxl**, y **Vanilla HTML/CSS/JS (Glassmorphic UI)**.
+Desarrollado con **FastAPI**, **SQLAlchemy**, **SQLite**, **JWT Auth**, **openpyxl**, y **Vanilla HTML/CSS/JS (Glassmorphic UI)**.
 
 ---
 
 ## 🎨 Características Principales
 
-- **Diseño Glassmorphic Premium**: Interfaz responsive estilizada para escritorio, laptop y celular (con navegación táctil inferior en smartphones).
-- **Emisión con Código QR Único**: Generación automática de código formateado (`POLL-0001-A9F2`) y código QR en imagen PNG.
-- **Escáner con Cámara de Celular**: Integración de cámara web/móvil vía `html5-qrcode` para escaneo y validación en tiempo real.
-- **Control Anti-Duplicados de Entrega**: Registro de fecha y hora exacta de entrega en el servidor con bloqueo de intentos duplicados.
-- **KPIs & Métricas en Vivo**: Tablero interactivo con total de tickets emitidos, vendidos, separados, no vendidos y entregados.
-- **Exportación en Excel y CSV**: Reportes en `.xlsx` y `.csv` descargables desde el panel.
+- **Boletos Físicos Numerados (1 a 1000)**: Sin códigos QR. Cada boleto se identifica por su número físico preimpreso.
+- **Autocompletado de Matriculados (`EstudiantesMatriculados.xlsx`)**: Al escribir el código de alumno (6 dígitos), autocompleta instantáneamente su **Nombre**, **Carrera** (`INGENIERIA DE SISTEMAS`) y **Ciclo** desde el padrón de 550 estudiantes.
+- **Soporte para Alumnos No Matriculados / Inteligencia Artificial / Externos**: Permite ingresar manualmente el Nombre, Carrera y Ciclo/DNI sin bloqueos para alumnos de otras escuelas o externas.
+- **Venta Múltiple por Persona (Hasta 20 Boletos)**: Permite registrar compras múltiples asignadas a un solo código o DNI.
+- **Persona Referencial que Recoge (`nombre_recolector`)**: Permite especificar quién recogerá cada una de las polladas (ej. apodos como *"Pepe"*, un amigo, o el mismo comprador).
+- **Gestión Financiera & Pagos Parciales**:
+  - Estados: `pagado` (100%), `parcialmente_pagado` (adelanto) y `separado` (sin pago).
+  - Métodos de Pago: `efectivo`, `yape`, `plin`, `ninguno`.
+  - Resaltado visual en entrega: Alerta llamativa indicando **monto abonado** y **saldo pendiente por cobrar**. Permite cobrar el saldo faltante al momento de entregar.
+- **KPIs de Cobertura y Recaudación**:
+  - Métrica de Cobertura: *"X de 550 estudiantes matriculados (Y%) tienen su boleto"*.
+  - Indicadores de total recaudado (S/.), saldo pendiente (S/.), boletos pagados, parciales y entregados.
+- **Exportación en Excel y CSV**: Descarga directa de archivos `.xlsx` y `.csv` con todas las columnas de comprador, recolector, estado, montos y entregas.
 
 ---
 
@@ -25,8 +32,8 @@ Abre la consola en la carpeta del proyecto y ejecuta:
 pip install -r requirements.txt
 ```
 
-### 2. Inicializar Base de Datos y Semilla
-Ejecuta el script para crear las tablas, el usuario administrador y los eventos iniciales:
+### 2. Inicializar Base de Datos y Poblar Matriculados
+Ejecuta el script para crear las tablas, el usuario administrador y cargar los 550 alumnos de `EstudiantesMatriculados.xlsx`:
 ```bash
 python seed.py
 ```
@@ -52,52 +59,33 @@ Al iniciar, la consola mostrará un banner visual indicando las URLs de acceso:
 
 ---
 
-## 📱 Cómo Conectar tu Celular en la Misma Red Wi-Fi
+## 📱 Conexión desde Celulares en la Misma Red Wi-Fi
 
 1. Conecta tu celular a la **misma red Wi-Fi** a la que está conectada tu computadora.
-2. Si deseas encontrar la dirección IP de tu máquina manualmente en Windows:
-   - Abre la consola (CMD / PowerShell) y ejecuta `ipconfig`.
-   - Busca la dirección **IPv4** de tu adaptador Wi-Fi (ejemplo: `192.168.1.50`).
-3. En el navegador del celular (Chrome, Safari, Firefox), abre la URL:
-   `http://192.168.1.50:8000` (reemplazando por tu IP local).
+2. Abre el navegador del celular (Chrome / Safari) e ingresa a la URL proporcionada por `run.py` (ejemplo: `http://192.168.1.50:8000`).
 
 ---
 
-## 🔄 Flujo Operativo Completo de Uso
+## 🔄 Flujo Operativo de Uso
 
-```mermaid
-graph TD
-    A[Fase 1: Preventa Salón por Salón] -->|Registrar alumno + estado| B[Generación de Ticket + QR]
-    B -->|Enviar QR / Imprimir| C[Alumno recibe Ticket]
-    C --> D[Fase 2: Día del Evento]
-    D -->|Escanear QR con Cámara de Celular| E[Validación de Estado & Alumno]
-    E -->|Confirmar Entrega| F[Registro Timestamp en Servidor]
-    F -->|Intento Duplicado| G[🚫 Error 400: Ya Entregado]
-    F -->|Cierre de Evento| H[Fase 3: Exportar Excel / CSV & KPIs]
-```
+### 📋 1. Preventa Salón por Salón (Venta en Aula / Laptop)
+1. El organizador ingresa en su laptop a `http://localhost:8000`.
+2. Va a la pestaña **"Nueva Venta"**.
+3. Escribe el código del alumno (6 cifras). El sistema autocompleta su **Nombre**, **Carrera** y **Ciclo** automáticamente.
+4. Si el alumno desea 3 boletos, coloca cantidad `3` y boleto inicial `#101`.
+5. El sistema genera los campos para ingresar quién recogerá cada pollada (`Boleto #101`: Pepe, `Boleto #102`: María, `Boleto #103`: Comprador).
+6. Selecciona el estado (`pagado`, `parcialmente_pagado` o `separado`), ingresa el monto pagado y método de pago (`yape`/`plin`/`efectivo`).
+7. Presiona **"Registrar y Asignar Boletos Físicos"**.
 
-### 📋 Fase 1: Preventa Salón por Salón (Venta en Aula / Laptop)
-1. El organizador ingresa a la aplicación en su laptop (`http://localhost:8000`).
-2. Inicia sesión con sus credenciales y selecciona la pestaña **"Nueva Venta"**.
-3. Selecciona el evento activo (ej. *"Pollada 2026"*).
-4. Ingresa el nombre del alumno, código universitario y selecciona el estado:
-   - **Vendido**: Alumno que canceló en el acto.
-   - **Separado**: Alumno que reservó y pagará al entregar.
-5. Presiona **"Generar Ticket & Código QR"**. El sistema emite inmediatamente el `codigo_unico` y muestra la imagen del QR PNG, con opción para imprimir o guardar.
+### 🎪 2. Día del Evento (Entrega de Polladas en Puerta con Celular)
+1. El encargado de puerta abre `http://192.168.X.X:8000` en su celular y va a la pestaña **"Entrega de Polladas"**.
+2. Escribe el número de boleto físico (ej. `101`) o busca por el apodo/nombre de la persona que recoge (`Pepe`).
+3. El sistema muestra la tarjeta del boleto:
+   - Si el boleto está **Parcialmente Pagado**, muestra la alerta: **⚠️ FALTA COBRAR: S/ 5.00**. Permite ingresar el cobro del saldo ahí mismo.
+   - Si está **Pagado 100%**, muestra la confirmación en verde.
+4. El encargado presiona **"Confirmar Entrega"**, confirmando en el cuadro modal. El servidor registra la fecha y hora exacta de entrega.
+5. **Protección Anti-Duplicados**: Si se intenta entregar el boleto `#101` por segunda vez, el sistema bloquea la acción con una alerta roja indicando que ya fue entregado y la hora exacta de la entrega previa.
 
-### 🎪 Fase 2: Día del Evento (Validación y Entrega Físicamente con Celular)
-1. Los encargados de la puerta ingresan desde sus celulares a `http://192.168.X.X:8000`.
-2. Acceden a la pestaña **"Entrega & Escáner"** y presionan **"Activar Cámara / Escáner QR"**.
-3. Apuntan la cámara del celular al código QR del alumno (impreso o en la pantalla de su smartphone).
-4. El sistema escanea el QR, busca el ticket al instante y muestra en pantalla:
-   - Nombre y código del alumno.
-   - Estado de la venta (`Vendido` / `Separado`).
-   - Estado de entrega (`PENDIENTE` o `ENTREGADO`).
-5. **Venta Adicional en Puerta**: Si el alumno desea comprar un ticket extra en el momento, el encargado presiona **"➕ Vender Ticket Adicional"**.
-6. **Confirmar Entrega**: El encargado presiona **"✅ Confirmar Entrega"**. El sistema despliega un cuadro modal de confirmación: *¿Estás seguro de que deseas confirmar la entrega del ticket POLL-0001-A9F2 a Juan Pérez?*.
-7. Al hacer clic en **"Sí, Confirmar Entrega"**, el servidor marca `entregado=true` y guarda la **fecha y hora exacta** del servidor.
-8. **Protección Anti-Fraude**: Si alguien intenta presentar el mismo QR por segunda vez, el sistema emite una alerta roja bloqueando el acceso e indicando la fecha y hora exacta en la que ya fue entregado previamente.
-
-### 📊 Fase 3: Cierre y Exportación de Reportes
-1. En el **Dashboard**, los organizadores observan los indicadores KPI consolidados en tiempo real.
-2. Presionan el botón **"Exportar Excel"** o **"Exportar CSV"** para descargar la lista completa de todos los tickets con sus timestamps de entrega.
+### 📊 3. Cierre y Exportación de Reportes
+1. En el **Dashboard**, los organizadores analizan las métricas de cobertura de matriculados (ej. *"145 de 550 estudiantes (26.36%) tienen su boleto"*) y la recaudación cobrada vs. saldo pendiente.
+2. Descargan el reporte consolidado en **Excel (`.xlsx`)** o **CSV (`.csv`)** con los botones correspondientes.

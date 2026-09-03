@@ -3,33 +3,55 @@ import io
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from app.database import get_db
-from app.models import Evento, Ticket, Usuario
+from app.models import Evento, Ticket, EstudianteMatriculado, Usuario
 from app.schemas import EventoCreate, EventoUpdate, EventoOut, EventoKPIsOut
 from app.auth import get_current_user
 
-router = APIRouter(prefix="/eventos", tags=["Eventos"])
+router = APIRouter(prefix="/eventos", tags=["Eventos y Reportes"])
 
 def calcular_kpis_evento(evento: Evento, db: Session) -> EventoKPIsOut:
     tickets = db.query(Ticket).filter(Ticket.evento_id == evento.id).all()
     
-    total = len(tickets)
-    vendidos = sum(1 for t in tickets if t.estado == "vendido")
+    total_boletos = len(tickets)
+    pagados = sum(1 for t in tickets if t.estado == "pagado")
+    parcialmente_pagados = sum(1 for t in tickets if t.estado == "parcialmente_pagado")
     separados = sum(1 for t in tickets if t.estado == "separado")
-    no_vendidos = sum(1 for t in tickets if t.estado == "no_vendido")
     entregados = sum(1 for t in tickets if t.entregado)
+
+    total_recaudado = sum(t.monto_pagado for t in tickets)
+    total_pendiente = sum(t.monto_pendiente for t in tickets)
+
+    # Cobertura de estudiantes matriculados (EstudiantesMatriculados.xlsx)
+    total_matriculados = db.query(EstudianteMatriculado).count()
+    
+    # Obtener códigos únicos de compradores en este evento que son estudiantes matriculados
+    codigos_compradores = db.query(Ticket.codigo_alumno).filter(Ticket.evento_id == evento.id).distinct().all()
+    set_codigos_compradores = set(c[0] for c in codigos_compradores)
+    
+    matriculados_con_boleto = db.query(EstudianteMatriculado).filter(
+        EstudianteMatriculado.codigo.in_(list(set_codigos_compradores))
+    ).count() if set_codigos_compradores else 0
+
+    porcentaje_cobertura = round((matriculados_con_boleto / total_matriculados) * 100, 2) if total_matriculados > 0 else 0.0
 
     return EventoKPIsOut(
         evento_id=evento.id,
         nombre_evento=evento.nombre,
-        total_tickets=total,
-        vendidos=vendidos,
+        total_boletos=total_boletos,
+        pagados=pagados,
+        parcialmente_pagados=parcialmente_pagados,
         separados=separados,
-        no_vendidos=no_vendidos,
-        entregados=entregados
+        entregados=entregados,
+        total_recaudado=round(total_recaudado, 2),
+        total_pendiente=round(total_pendiente, 2),
+        estudiantes_matriculados_total=total_matriculados,
+        estudiantes_matriculados_con_boleto=matriculados_con_boleto,
+        porcentaje_cobertura_matriculados=porcentaje_cobertura
     )
 
 @router.get("/kpis", response_model=List[EventoKPIsOut])
@@ -38,8 +60,7 @@ def obtener_kpis_todos_eventos(
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    5. KPIs:
-    Devuelve los KPIs de todos los eventos (cantidad de tickets vendidos, separados y no vendidos).
+    Devuelve los KPIs consolidados de todos los eventos.
     Requiere autenticación.
     """
     eventos = db.query(Evento).all()
@@ -52,8 +73,7 @@ def obtener_kpis_evento(
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    5. KPIs por evento:
-    Devuelve la cantidad de tickets vendidos, separados (no recogidos) y no vendidos para un evento específico.
+    Devuelve las métricas KPI y porcentaje de cobertura de estudiantes matriculados para un evento específico.
     Requiere autenticación.
     """
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
@@ -71,8 +91,7 @@ def exportar_tickets_excel(
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    6. Exportar Excel:
-    Genera un archivo Excel (.xlsx con openpyxl) con el detalle completo de todos los tickets del evento.
+    Exporta la lista completa de boletos vendidos/separados a un archivo Excel (.xlsx) con formato profesional.
     Requiere autenticación.
     """
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
@@ -82,11 +101,11 @@ def exportar_tickets_excel(
             detail="Evento no encontrado"
         )
 
-    tickets = db.query(Ticket).filter(Ticket.evento_id == evento_id).all()
+    tickets = db.query(Ticket).filter(Ticket.evento_id == evento_id).order_by(Ticket.numero_boleto.asc()).all()
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Tickets"
+    ws.title = "Reporte de Boletos"
 
     # Estilos Excel
     header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
@@ -98,10 +117,10 @@ def exportar_tickets_excel(
         bottom=Side(style='thin', color='D9D9D9')
     )
 
-    # Encabezados
     headers = [
-        "ID", "Código Único", "Nombre Alumno", "Código Alumno", 
-        "Estado", "Entregado", "Fecha y Hora de Entrega"
+        "Nº Boleto", "Código / DNI", "Nombre Comprador", "Carrera", "Ciclo",
+        "Persona que Recoge", "Estado", "Monto Total (S/)", "Monto Pagado (S/)",
+        "Monto Pendiente (S/)", "Método de Pago", "Entregado", "Fecha de Entrega"
     ]
     ws.append(headers)
 
@@ -111,27 +130,34 @@ def exportar_tickets_excel(
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Filas de datos
-    for ticket in tickets:
-        fecha_str = ticket.fecha_hora_entrega.strftime("%Y-%m-%d %H:%M:%S") if ticket.fecha_hora_entrega else "-"
-        entregado_str = "Sí" if ticket.entregado else "No"
-        
+    for t in tickets:
+        fecha_str = t.fecha_hora_entrega.strftime("%Y-%m-%d %H:%M:%S") if t.fecha_hora_entrega else "-"
+        entregado_str = "Sí" if t.entregado else "No"
+        recolector_str = t.nombre_recolector if t.nombre_recolector else t.nombre_alumno
+
         ws.append([
-            ticket.id,
-            ticket.codigo_unico,
-            ticket.nombre_alumno,
-            ticket.codigo_alumno,
-            ticket.estado,
+            t.numero_boleto,
+            t.codigo_alumno,
+            t.nombre_alumno,
+            t.carrera,
+            t.ciclo,
+            recolector_str,
+            t.estado.upper(),
+            t.monto_total,
+            t.monto_pagado,
+            t.monto_pendiente,
+            t.metodo_pago.upper(),
             entregado_str,
             fecha_str
         ])
 
-    # Aplicar bordes y ajustar ancho de columnas
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
         for cell in row:
             cell.border = thin_border
-            if cell.column in [1, 5, 6]:
+            if cell.column in [1, 2, 5, 7, 11, 12]:
                 cell.alignment = Alignment(horizontal="center")
+            elif cell.column in [8, 9, 10]:
+                cell.number_format = 'S/ #,##0.00'
 
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
@@ -142,7 +168,7 @@ def exportar_tickets_excel(
     wb.save(output)
     output.seek(0)
 
-    filename = f"tickets_{evento.nombre.replace(' ', '_')}.xlsx"
+    filename = f"reporte_boletos_{evento.nombre.replace(' ', '_')}.xlsx"
     return Response(
         content=output.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -156,8 +182,7 @@ def exportar_tickets_csv(
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    6. Exportar CSV:
-    Genera un archivo CSV con el detalle completo de todos los tickets del evento.
+    Exporta la lista completa de boletos vendidos/separados a un archivo CSV.
     Requiere autenticación.
     """
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
@@ -167,33 +192,40 @@ def exportar_tickets_csv(
             detail="Evento no encontrado"
         )
 
-    tickets = db.query(Ticket).filter(Ticket.evento_id == evento_id).all()
+    tickets = db.query(Ticket).filter(Ticket.evento_id == evento_id).order_by(Ticket.numero_boleto.asc()).all()
 
     output = io.StringIO()
-    # Escribir BOM para UTF-8 para compatibilidad con Microsoft Excel
-    output.write('\ufeff')
+    output.write('\ufeff') # UTF-8 BOM
     writer = csv.writer(output, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 
-    # Encabezados
     writer.writerow([
-        "ID", "Código Único", "Nombre Alumno", "Código Alumno", 
-        "Estado", "Entregado", "Fecha y Hora de Entrega"
+        "Nº Boleto", "Código / DNI", "Nombre Comprador", "Carrera", "Ciclo",
+        "Persona que Recoge", "Estado", "Monto Total (S/)", "Monto Pagado (S/)",
+        "Monto Pendiente (S/)", "Método de Pago", "Entregado", "Fecha de Entrega"
     ])
 
-    for ticket in tickets:
-        fecha_str = ticket.fecha_hora_entrega.strftime("%Y-%m-%d %H:%M:%S") if ticket.fecha_hora_entrega else ""
-        entregado_str = "Sí" if ticket.entregado else "No"
+    for t in tickets:
+        fecha_str = t.fecha_hora_entrega.strftime("%Y-%m-%d %H:%M:%S") if t.fecha_hora_entrega else ""
+        entregado_str = "Sí" if t.entregado else "No"
+        recolector_str = t.nombre_recolector if t.nombre_recolector else t.nombre_alumno
+
         writer.writerow([
-            ticket.id,
-            ticket.codigo_unico,
-            ticket.nombre_alumno,
-            ticket.codigo_alumno,
-            ticket.estado,
+            t.numero_boleto,
+            t.codigo_alumno,
+            t.nombre_alumno,
+            t.carrera,
+            t.ciclo,
+            recolector_str,
+            t.estado.upper(),
+            f"{t.monto_total:.2f}",
+            f"{t.monto_pagado:.2f}",
+            f"{t.monto_pendiente:.2f}",
+            t.metodo_pago.upper(),
             entregado_str,
             fecha_str
         ])
 
-    filename = f"tickets_{evento.nombre.replace(' ', '_')}.csv"
+    filename = f"reporte_boletos_{evento.nombre.replace(' ', '_')}.csv"
     return Response(
         content=output.getvalue(),
         media_type="text/csv; charset=utf-8",
@@ -206,9 +238,6 @@ def crear_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """
-    Crea un nuevo evento. Requiere autenticación.
-    """
     db_evento = Evento(
         nombre=evento_in.nombre,
         fecha=evento_in.fecha,
@@ -225,9 +254,6 @@ def listar_eventos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """
-    Obtiene la lista de eventos. Requiere autenticación.
-    """
     query = db.query(Evento)
     if activo is not None:
         query = query.filter(Evento.activo == activo)
@@ -239,9 +265,6 @@ def obtener_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """
-    Obtiene los detalles de un evento por ID. Requiere autenticación.
-    """
     db_evento = db.query(Evento).filter(Evento.id == evento_id).first()
     if not db_evento:
         raise HTTPException(
@@ -257,9 +280,6 @@ def actualizar_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """
-    Actualiza un evento existente. Requiere autenticación.
-    """
     db_evento = db.query(Evento).filter(Evento.id == evento_id).first()
     if not db_evento:
         raise HTTPException(
@@ -281,9 +301,6 @@ def eliminar_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """
-    Elimina un evento del sistema. Requiere autenticación.
-    """
     db_evento = db.query(Evento).filter(Evento.id == evento_id).first()
     if not db_evento:
         raise HTTPException(
